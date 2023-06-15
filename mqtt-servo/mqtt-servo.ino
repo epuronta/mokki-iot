@@ -29,12 +29,12 @@ Servo myservo;
 
 byte *outboundBytes;
 
+// Initial state is rapid blinking
+auto led = JLed(ONBOARD_LED).Blink(100, 100).Forever();
+
 void setup()
 {
   Serial.begin(9600);
-
-  pinMode(ONBOARD_LED, OUTPUT);
-  digitalWrite(ONBOARD_LED, HIGH);
 
   // Configure the input pin
   pinMode(SWITCH_PIN, INPUT_PULLUP);
@@ -62,19 +62,22 @@ void connect_wifi()
 {
   while (WiFi.status() != WL_CONNECTED)
   {
+    setLedWifiConnecting();
+
     Serial.print("Connecting WiFi to SSID ");
     Serial.println(WIFI_SSID);
 
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     while (WiFi.status() != WL_CONNECTED)
     {
-      delay(500);
-      Serial.print(".");
+      led.Update();
     }
 
     Serial.println();
     Serial.print("WiFi connected, IP ");
     Serial.println(WiFi.localIP());
+
+    setLedAllGood();
   }
 }
 
@@ -82,22 +85,37 @@ void connect_mqtt()
 {
   while (!mqtt_client.connected())
   {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (mqtt_client.connect("ESP32Client", SECRET_MQTT_USER, SECRET_MQTT_PASSWORD))
+    setLedMqttConnecting();
+    
+    unsigned long lastConnectAttempt = 0;
+
+    while(!mqtt_client.connected())
     {
-      Serial.println("connected");
-      // Subscribe
-      mqtt_client.subscribe(MQTT_TOPIC_INBOUND);
+      
+      
+      // Attempt to connect
+      if(lastConnectAttempt == 0 || millis() - lastConnectAttempt > 5000)
+      {
+        Serial.print("Attempting MQTT connection...");
+
+        if (mqtt_client.connect("ESP32Client", SECRET_MQTT_USER, SECRET_MQTT_PASSWORD))
+        {
+          Serial.println("connected");
+          // Subscribe
+          mqtt_client.subscribe(MQTT_TOPIC_INBOUND);
+        }
+        else
+        {
+          Serial.print("failed, rc=");
+          Serial.print(mqtt_client.state());
+          Serial.println(" try again in 5 seconds");
+        }
+        lastConnectAttempt = millis();
+      }
+      // Keep updating the status led
+      led.Update();
     }
-    else
-    {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt_client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
+    setLedAllGood();
   }
 }
 
@@ -129,12 +147,24 @@ void mqtt_callback(char *topic, byte *message, unsigned int length)
 
 void loop()
 {
-
-  auto led = JLed(ONBOARD_LED).Breathe(2000).DelayAfter(1000).Forever();
   connect_wifi();
   connect_mqtt();
-  mqtt_client.loop();
 
-  Serial.println("Loop");
-  delay(100);
+  led.Update();
+  
+  mqtt_client.loop();
 }
+
+void setLedAllGood()
+{
+    led = JLed(ONBOARD_LED).Breathe(5000).DelayAfter(5000).Forever();
+}
+void setLedWifiConnecting()
+{
+    led = JLed(ONBOARD_LED).Blink(100, 500).Forever();
+}
+void setLedMqttConnecting()
+{
+    led = JLed(ONBOARD_LED).Blink(500, 100).Forever();
+}
+
