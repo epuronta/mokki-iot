@@ -27,6 +27,8 @@ PubSubClient mqtt_client(wifi_client);
 // Servo control
 Servo myservo;
 
+String inboundString = "";
+String outboundString = "";
 byte *outboundBytes;
 
 // Initial state is rapid blinking
@@ -55,7 +57,7 @@ void setup()
   mqtt_client.setServer(MQTT_SERVER, 1883);
   mqtt_client.setCallback(mqtt_callback);
 
-  outboundBytes = (byte *)malloc(1);
+  outboundBytes = (byte *)malloc(4);
 }
 
 void connect_wifi()
@@ -119,30 +121,45 @@ void connect_mqtt()
   }
 }
 
-void mqtt_callback(char *topic, byte *message, unsigned int length)
+void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(": ");
 
-  byte v = message[0];
-  Serial.print(v);
+  inboundString = "";
+  for (int i=0;i<length;i++) {
+    Serial.print(payload[i]);
+    inboundString += (char)payload[i];
+  }
   Serial.println();
+
+  int v = inboundString.toInt();
 
   if (v < 0)
     v = 0;
   if (v > 180)
     v = 180;
+  
+  Serial.print("Setting servo to: ");
+  Serial.println(v);
 
   myservo.write(v);
 
-  outboundBytes[0] = v;
+  outboundString = String(v);
+  outboundString.getBytes(outboundBytes, 4);
+
   Serial.print("Publishing ");
-  Serial.print(v);
+  Serial.print(outboundString);
   Serial.print(" to ");
   Serial.println(MQTT_TOPIC_OUTBOUND);
-  mqtt_client.publish(MQTT_TOPIC_OUTBOUND, outboundBytes, 1);
-  Serial.println("Publish done");
+  // Publish the appropriate amount of bytes.
+  // Single-digit value -> single byte etc
+  if(mqtt_client.publish(MQTT_TOPIC_OUTBOUND, outboundBytes, outboundString.length())){
+    Serial.println("Publish done");
+  } else {
+    Serial.println("Publish failed");
+  }
 }
 
 void loop()
