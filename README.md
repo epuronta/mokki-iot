@@ -28,15 +28,19 @@ Onboard LED (GPIO 2):
 
 ## Dependencies
 
+Pulled in by PlatformIO via `lib_deps`:
+
 - [ESP32Servo](https://github.com/madhephaestus/ESP32Servo)
 - [PubSubClient](https://github.com/knolleary/pubsubclient)
 - [JLed](https://github.com/jandelgado/jled)
 
 ## Building
 
-Copy `mqtt-servo/example.secrets.h` to `mqtt-servo/secrets.h` (gitignored) and fill it
-in, then open `mqtt-servo/mqtt-servo.ino` in the Arduino IDE and upload. Serial runs at
-9600 baud.
+Built with [PlatformIO](https://platformio.org/). Copy `include/example.secrets.h` to
+`include/secrets.h` (gitignored) and fill it in, then:
 
-`debug.cfg`, `debug_custom.json` and the `.svd` files are OpenOCD/JTAG leftovers from
-the Arduino IDE debug setup. Not needed for a normal build.
+```
+pio run            # compile
+pio run -t upload  # flash
+pio device monitor # serial, 9600 baud
+```

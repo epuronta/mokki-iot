@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "secrets.h"
 #include <ESP32Servo.h>
 #include <WiFi.h>
@@ -19,6 +20,12 @@ const int SERVO_PIN = 18;
 // and the actual callback afterwards. This ensures the client referenced
 // inside the callback function is valid.
 void mqtt_callback(char *topic, byte *message, unsigned int length);
+
+void connect_wifi();
+void connect_mqtt();
+void setLedAllGood();
+void setLedWifiConnecting();
+void setLedMqttConnecting();
 
 WiFiClient wifi_client;
 PubSubClient mqtt_client(wifi_client);
