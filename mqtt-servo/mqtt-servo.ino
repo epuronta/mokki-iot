@@ -8,8 +8,8 @@ const char *WIFI_SSID = SECRET_WIFI_SSID;
 const char *WIFI_PASSWORD = SECRET_WIFI_PASSWORD;
 
 const char *MQTT_SERVER = SECRET_MQTT_SERVER;
-const char *MQTT_TOPIC_INBOUND = SECRET_MQTT_TOPIC_INBOUND;
-const char *MQTT_TOPIC_OUTBOUND = SECRET_MQTT_TOPIC_OUTBOUND;
+const char *MQTT_TOPIC_INBOUND = "mokki/pump-change-request";
+const char *MQTT_TOPIC_OUTBOUND = "mokki/pump-state";
 
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
