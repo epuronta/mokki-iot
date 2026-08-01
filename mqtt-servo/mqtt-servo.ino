@@ -14,7 +14,6 @@ const char *MQTT_TOPIC_OUTBOUND = "mokki/pump-state";
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
 const int SERVO_PIN = 18;
-const int SWITCH_PIN = 33;
 
 // Callback function header. Must be declared before the client constructor
 // and the actual callback afterwards. This ensures the client referenced
@@ -37,9 +36,6 @@ auto led = JLed(ONBOARD_LED).Blink(100, 100).Forever();
 void setup()
 {
   Serial.begin(9600);
-
-  // Configure the input pin
-  pinMode(SWITCH_PIN, INPUT_PULLUP);
 
   // Allow allocation of all timers (??)
   ESP32PWM::allocateTimer(0);
