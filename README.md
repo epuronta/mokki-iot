@@ -45,7 +45,11 @@ Onboard LED (GPIO 2):
 ## Recovery behaviour
 
 Each WiFi association attempt gets 20 seconds, then the radio is dropped and a fresh
-`begin()` starts.
+`begin()` starts. After 5 consecutive failures the device restarts itself, on the
+assumption that something below the WiFi stack is wedged.
+
+MQTT deliberately has no such escalation. Bad credentials or a deleted instance are the
+likely failures there, and rebooting fixes neither.
 
 ## Hardware
 

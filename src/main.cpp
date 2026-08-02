@@ -23,6 +23,12 @@ const unsigned long HEARTBEAT_INTERVAL_MS = 3600000;
 // forever. Some WiFi failure modes only clear on a new begin().
 const unsigned long WIFI_ATTEMPT_TIMEOUT_MS = 20000;
 
+// Last resort when repeated attempts get nowhere, on the assumption that
+// whatever is wedged sits below what begin() resets. Roughly 100s of failure
+// before it triggers, and a genuinely absent AP just means rebooting until it
+// returns, which is harmless here.
+const int WIFI_ATTEMPTS_BEFORE_RESTART = 5;
+
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
 const int SERVO_PIN = 18;
@@ -78,6 +84,8 @@ void setup()
 
 void connect_wifi()
 {
+  int failedAttempts = 0;
+
   while (WiFi.status() != WL_CONNECTED)
   {
     setLedWifiConnecting();
@@ -99,7 +107,17 @@ void connect_wifi()
 
     if (WiFi.status() != WL_CONNECTED)
     {
-      Serial.println("WiFi attempt timed out, retrying");
+      failedAttempts++;
+      Serial.print("WiFi attempt timed out, retrying. Attempt ");
+      Serial.println(failedAttempts);
+
+      if (failedAttempts >= WIFI_ATTEMPTS_BEFORE_RESTART)
+      {
+        Serial.println("Too many failed WiFi attempts, restarting");
+        // Otherwise the message never makes it out before the reset.
+        Serial.flush();
+        ESP.restart();
+      }
       continue;
     }
 
