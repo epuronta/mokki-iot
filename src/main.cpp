@@ -29,6 +29,13 @@ const unsigned long WIFI_ATTEMPT_TIMEOUT_MS = 20000;
 // returns, which is harmless here.
 const int WIFI_ATTEMPTS_BEFORE_RESTART = 5;
 
+// The coupling visibly flexes, so driving straight to a target leaves the servo
+// winding up the coupling rather than turning the knob. Overshooting and coming
+// back takes the flex up first. Found by hand: 150 only lands correctly when
+// approached as 160 then 150.
+const int SERVO_OVERSHOOT_DEGREES = 10;
+const unsigned long SERVO_OVERSHOOT_MS = 500;
+
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
 const int SERVO_PIN = 18;
@@ -55,6 +62,10 @@ String outboundString = "";
 byte *outboundBytes;
 
 unsigned long lastHeartbeat = 0;
+
+// Final angle still waiting behind an overshoot. -1 means nothing pending.
+int pendingAngle = -1;
+unsigned long overshootStarted = 0;
 
 // Initial state is rapid blinking
 auto led = JLed(ONBOARD_LED).Blink(100, 100).Forever();
@@ -211,8 +222,15 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   Serial.print("Setting servo to: ");
   Serial.println(v);
 
-  myservo.write(v);
+  long overshoot = v + SERVO_OVERSHOOT_DEGREES;
+  if (overshoot > 180)
+    overshoot = 180;
 
+  myservo.write(overshoot);
+  pendingAngle = v;
+  overshootStarted = millis();
+
+  // Report the angle that was asked for, not the intermediate one.
   outboundString = String(v);
   outboundString.getBytes(outboundBytes, 4);
 
@@ -238,6 +256,13 @@ void loop()
   led.Update();
 
   mqtt_client.loop();
+
+  // Settle onto the real target once the overshoot has had time to travel.
+  if (pendingAngle >= 0 && millis() - overshootStarted >= SERVO_OVERSHOOT_MS)
+  {
+    myservo.write(pendingAngle);
+    pendingAngle = -1;
+  }
 
   // Unsigned subtraction so this keeps working across the millis() rollover at
   // 49 days. The device is meant to stay up all winter.
