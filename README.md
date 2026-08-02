@@ -42,6 +42,11 @@ Onboard LED (GPIO 2):
 | Blink 500 on / 100 off | Connecting to MQTT |
 | Breathe, 5 s | Connected |
 
+## Recovery behaviour
+
+Each WiFi association attempt gets 20 seconds, then the radio is dropped and a fresh
+`begin()` starts.
+
 ## Hardware
 
 - ESP32 dev board

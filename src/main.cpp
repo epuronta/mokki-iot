@@ -19,6 +19,10 @@ const char *MQTT_TOPIC_ONLINE = "mokki/pump-online";
 // needed, so this never has to be retuned.
 const unsigned long HEARTBEAT_INTERVAL_MS = 3600000;
 
+// Give up on an association attempt and start a fresh one rather than waiting
+// forever. Some WiFi failure modes only clear on a new begin().
+const unsigned long WIFI_ATTEMPT_TIMEOUT_MS = 20000;
+
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
 const int SERVO_PIN = 18;
@@ -81,10 +85,22 @@ void connect_wifi()
     Serial.print("Connecting WiFi to SSID ");
     Serial.println(WIFI_SSID);
 
+    // Drop the radio first so each attempt starts from a known state.
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED)
+
+    unsigned long attemptStarted = millis();
+    while (WiFi.status() != WL_CONNECTED &&
+           millis() - attemptStarted < WIFI_ATTEMPT_TIMEOUT_MS)
     {
       led.Update();
+    }
+
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.println("WiFi attempt timed out, retrying");
+      continue;
     }
 
     Serial.println();
