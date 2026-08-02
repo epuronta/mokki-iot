@@ -154,7 +154,20 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   }
   Serial.println();
 
-  int v = inboundString.toInt();
+  // toInt() can't tell a real "0" from garbage, so parse by hand and refuse
+  // anything that isn't a plain number. Otherwise a typo drives the knob to zero.
+  const char *start = inboundString.c_str();
+  char *end;
+  long v = strtol(start, &end, 10);
+
+  // strtol eats leading whitespace, so end == start means no digits at all.
+  while (isspace(*end))
+    end++;
+  if (end == start || *end != '\0')
+  {
+    Serial.println("Ignoring non-numeric payload");
+    return;
+  }
 
   if (v < 0)
     v = 0;

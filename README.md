@@ -9,8 +9,8 @@ Connects to WiFi, then to the MQTT broker (port 1883, user + password), and subs
 to `mokki/pump-change-request`. Each message is parsed as an int, clamped to 0..180, and
 written to the servo. The resulting angle is echoed on `mokki/pump-state`.
 
-Payloads are ASCII digits, e.g. `90`. Non-numeric input becomes `0` (`String::toInt()`),
-driving the knob to the low end.
+Payloads are ASCII digits, e.g. `90`. Anything that isn't a plain number is logged and
+ignored, leaving the servo alone.
 
 ## Topics
 
