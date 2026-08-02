@@ -11,6 +11,7 @@ const char *WIFI_PASSWORD = SECRET_WIFI_PASSWORD;
 const char *MQTT_SERVER = SECRET_MQTT_SERVER;
 const char *MQTT_TOPIC_INBOUND = "mokki/pump-change-request";
 const char *MQTT_TOPIC_OUTBOUND = "mokki/pump-state";
+const char *MQTT_TOPIC_ONLINE = "mokki/pump-online";
 
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
@@ -103,9 +104,16 @@ void connect_mqtt()
       {
         Serial.print("Attempting MQTT connection...");
 
-        if (mqtt_client.connect("ESP32Client", SECRET_MQTT_USER, SECRET_MQTT_PASSWORD))
+        // The will lets the broker announce us as offline if we drop without a
+        // clean disconnect. Otherwise a retained position from a dead controller
+        // is indistinguishable from a live one.
+        if (mqtt_client.connect("ESP32Client", SECRET_MQTT_USER, SECRET_MQTT_PASSWORD,
+                                MQTT_TOPIC_ONLINE, 0, true, "0"))
         {
           Serial.println("connected");
+
+          mqtt_client.publish(MQTT_TOPIC_ONLINE, "1", true);
+
           // Subscribe
           mqtt_client.subscribe(MQTT_TOPIC_INBOUND);
         }

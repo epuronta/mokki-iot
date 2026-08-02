@@ -18,10 +18,16 @@ driving the knob to the low end.
 | --- | --- | --- | --- |
 | `mokki/pump-change-request` | in | `0`..`180` | up to the publisher |
 | `mokki/pump-state` | out | last commanded angle | yes |
+| `mokki/pump-online` | out | `1` alive, `0` gone | yes |
 
 `mokki/pump-state` is retained so a subscriber that connects later learns the position
 immediately instead of waiting for the next change. Note it's the angle that was
 *commanded*, never a measurement, so it's wrong if the knob gets turned by hand.
+
+`mokki/pump-online` is an MQTT last will. The broker publishes `0` on its own if the
+device drops without a clean disconnect, and the device publishes `1` on connect. Without
+it a retained position from a dead controller is indistinguishable from a live one.
+Detection lags by roughly 1.5x the keepalive, so about 22 seconds.
 
 Onboard LED (GPIO 2):
 
