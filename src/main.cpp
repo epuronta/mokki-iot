@@ -13,6 +13,12 @@ const char *MQTT_TOPIC_INBOUND = "mokki/pump-change-request";
 const char *MQTT_TOPIC_OUTBOUND = "mokki/pump-state";
 const char *MQTT_TOPIC_ONLINE = "mokki/pump-online";
 
+// Doubles as the availability heartbeat and as keep-alive traffic. The free tier
+// broker deletes instances that go two months without a published message, and a
+// connected client alone does not count. Hourly leaves far more margin than
+// needed, so this never has to be retuned.
+const unsigned long HEARTBEAT_INTERVAL_MS = 3600000;
+
 const int ONBOARD_LED = 2;
 // Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
 const int SERVO_PIN = 18;
@@ -37,6 +43,8 @@ Servo myservo;
 String inboundString = "";
 String outboundString = "";
 byte *outboundBytes;
+
+unsigned long lastHeartbeat = 0;
 
 // Initial state is rapid blinking
 auto led = JLed(ONBOARD_LED).Blink(100, 100).Forever();
@@ -113,6 +121,7 @@ void connect_mqtt()
           Serial.println("connected");
 
           mqtt_client.publish(MQTT_TOPIC_ONLINE, "1", true);
+          lastHeartbeat = millis();
 
           // Subscribe
           mqtt_client.subscribe(MQTT_TOPIC_INBOUND);
@@ -180,8 +189,16 @@ void loop()
   connect_mqtt();
 
   led.Update();
-  
+
   mqtt_client.loop();
+
+  // Unsigned subtraction so this keeps working across the millis() rollover at
+  // 49 days. The device is meant to stay up all winter.
+  if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL_MS)
+  {
+    mqtt_client.publish(MQTT_TOPIC_ONLINE, "1", true);
+    lastHeartbeat = millis();
+  }
 }
 
 void setLedAllGood()

@@ -29,6 +29,10 @@ device drops without a clean disconnect, and the device publishes `1` on connect
 it a retained position from a dead controller is indistinguishable from a live one.
 Detection lags by roughly 1.5x the keepalive, so about 22 seconds.
 
+The device also republishes `1` hourly. That doubles as keep-alive traffic, since the
+free tier broker reclaims instances that go two months without a published message and an
+open connection doesn't count.
+
 Onboard LED (GPIO 2):
 
 | Pattern | Meaning |
