@@ -158,7 +158,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   Serial.println(MQTT_TOPIC_OUTBOUND);
   // Publish the appropriate amount of bytes.
   // Single-digit value -> single byte etc
-  if(mqtt_client.publish(MQTT_TOPIC_OUTBOUND, outboundBytes, outboundString.length())){
+  // Retained so a subscriber that connects later still learns the position.
+  if(mqtt_client.publish(MQTT_TOPIC_OUTBOUND, outboundBytes, outboundString.length(), true)){
     Serial.println("Publish done");
   } else {
     Serial.println("Publish failed");

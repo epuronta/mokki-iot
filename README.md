@@ -12,6 +12,17 @@ written to the servo. The resulting angle is echoed on `mokki/pump-state`.
 Payloads are ASCII digits, e.g. `90`. Non-numeric input becomes `0` (`String::toInt()`),
 driving the knob to the low end.
 
+## Topics
+
+| Topic | Direction | Payload | Retained |
+| --- | --- | --- | --- |
+| `mokki/pump-change-request` | in | `0`..`180` | up to the publisher |
+| `mokki/pump-state` | out | last commanded angle | yes |
+
+`mokki/pump-state` is retained so a subscriber that connects later learns the position
+immediately instead of waiting for the next change. Note it's the angle that was
+*commanded*, never a measurement, so it's wrong if the knob gets turned by hand.
+
 Onboard LED (GPIO 2):
 
 | Pattern | Meaning |
