@@ -66,8 +66,9 @@ Pulled in by PlatformIO via `lib_deps`:
 
 ## Building
 
-Built with [PlatformIO](https://platformio.org/). Copy `include/example.secrets.h` to
-`include/secrets.h` (gitignored) and fill it in, then:
+Built with [PlatformIO](https://platformio.org/). Copy
+`firmware/include/example.secrets.h` to `firmware/include/secrets.h` (gitignored) and fill
+it in, then, from `firmware/`:
 
 ```
 pio run            # compile
