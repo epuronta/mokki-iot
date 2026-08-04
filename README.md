@@ -1,77 +1,71 @@
 # mokki-iot
 
-ESP32 that turns a heat pump's power knob with a servo, driven over MQTT. The pump has
-no network interface, so the knob gets turned physically.
+Turns the power knob on a cabin heat pump over the internet. The pump has no network
+interface of any kind, so the knob gets turned physically, by a servo bolted to it.
+
+## Layout
+
+| Directory | What it is | Docs |
+| --- | --- | --- |
+| `firmware/` | ESP32 that drives the servo. C++, PlatformIO. | [`firmware/README.md`](firmware/README.md) |
+| `web/` | Web UI for pressing the two presets. Python, FastAPI. | [`web/README.md`](web/README.md) |
 
 ## How it works
 
-Connects to WiFi, then to the MQTT broker (port 1883, user + password), and subscribes
-to `mokki/pump-change-request`. Each message is parsed as an int, clamped to 0..180, and
-written to the servo. The resulting angle is echoed on `mokki/pump-state`.
+```
+browser ──HTTP──> web ──MQTT──> broker <──MQTT── firmware ──PWM──> servo ──> knob
+```
 
-Payloads are ASCII digits, e.g. `90`. Anything that isn't a plain number is logged and
-ignored, leaving the servo alone.
+The two halves never talk to each other directly, and neither one is required for the
+other to start. All they share is a broker (CloudAMQP, RabbitMQ with the MQTT plugin) and
+the three topics below.
+
+The broker is also the only place state lives. Both the position and the device's
+availability are retained messages, which is what lets the web app stay completely
+stateless and lets the firmware come up already knowing where the knob should be.
 
 ## Topics
 
+The contract between the two halves. Changing either side means changing both.
+
 | Topic | Direction | Payload | Retained |
 | --- | --- | --- | --- |
-| `mokki/pump-change-request` | in | `0`..`180` | up to the publisher |
-| `mokki/pump-state` | out | last commanded angle | yes |
-| `mokki/pump-online` | out | `1` alive, `0` gone | yes |
+| `mokki/pump-change-request` | web → firmware | `0`..`180` | yes, by the web app |
+| `mokki/pump-state` | firmware → web | last commanded angle | yes |
+| `mokki/pump-online` | firmware → web | `1` alive, `0` gone | yes |
 
-`mokki/pump-state` is retained so a subscriber that connects later learns the position
-immediately instead of waiting for the next change. Note it's the angle that was
-*commanded*, never a measurement, so it's wrong if the knob gets turned by hand.
+Payloads are ASCII digits, e.g. `90`. The firmware ignores anything that isn't a plain
+number rather than guessing, since a typo would otherwise drive the knob to zero.
 
-`mokki/pump-online` is an MQTT last will. The broker publishes `0` on its own if the
-device drops without a clean disconnect, and the device publishes `1` on connect. Without
-it a retained position from a dead controller is indistinguishable from a live one.
-Detection lags by roughly 1.5x the keepalive, so about 22 seconds.
+`mokki/pump-state` is the angle that was **commanded**, never a measurement. There is no
+position feedback, so it's simply wrong if somebody turns the knob by hand.
 
-The device also republishes `1` hourly. That doubles as keep-alive traffic, since the
-free tier broker reclaims instances that go two months without a published message and an
-open connection doesn't count.
+`mokki/pump-online` is an MQTT last will. The broker publishes `0` by itself if the device
+drops without a clean disconnect, and the device publishes `1` on connect. Without it a
+retained position from a dead controller looks identical to a live one. Detection lags by
+roughly 1.5x the keepalive, so about 22 seconds. The device also republishes `1` hourly,
+which doubles as keep-alive traffic for the broker's free tier.
 
-Onboard LED (GPIO 2):
+Subscribe by exact topic name when poking at this by hand. Wildcard subscriptions never
+receive retained messages, so `mosquitto_sub -t 'mokki/#'` comes back empty and looks like
+nothing is there.
 
-| Pattern | Meaning |
-| --- | --- |
-| Blink 100/100 ms | Booting |
-| Blink 100 on / 500 off | Connecting to WiFi |
-| Blink 500 on / 100 off | Connecting to MQTT |
-| Breathe, 5 s | Connected |
+## The two positions
 
-## Recovery behaviour
+`150` is "20 vaille", `30` is "5 vaille". Those are the only positions the knob is ever
+put in, which is why the web UI is two buttons rather than a slider, and why the full
+0..180 range has never been calibrated.
 
-Each WiFi association attempt gets 20 seconds, then the radio is dropped and a fresh
-`begin()` starts. After 5 consecutive failures the device restarts itself, on the
-assumption that something below the WiFi stack is wedged.
+`150` only lands correctly if it's approached from `160` first, because the coupling
+flexes and the servo otherwise winds up the coupling instead of turning the knob. The
+firmware owns that workaround, so anything publishing a command just sends the target. A
+rigid coupling would retire the whole thing, see `TODO.md`.
 
-MQTT deliberately has no such escalation. Bad credentials or a deleted instance are the
-likely failures there, and rebooting fixes neither.
+## Getting it running
 
-## Hardware
-
-- ESP32 dev board
-- Servo on **GPIO 18**, 50 Hz, 500..2400 us pulse range
-
-## Dependencies
-
-Pulled in by PlatformIO via `lib_deps`:
-
-- [ESP32Servo](https://github.com/madhephaestus/ESP32Servo)
-- [PubSubClient](https://github.com/knolleary/pubsubclient)
-- [JLed](https://github.com/jandelgado/jled)
-
-## Building
-
-Built with [PlatformIO](https://platformio.org/). Copy
-`firmware/include/example.secrets.h` to `firmware/include/secrets.h` (gitignored) and fill
-it in, then, from `firmware/`:
+Each half is independent, see its own README. Roughly:
 
 ```
-pio run            # compile
-pio run -t upload  # flash
-pio device monitor # serial, 9600 baud
+cd firmware && pio run -t upload   # flash the ESP32
+cd web && make install && make run # web UI on :8001
 ```
