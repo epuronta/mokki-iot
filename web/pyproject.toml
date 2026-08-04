@@ -1,0 +1,35 @@
+[project]
+name = "mokki-web"
+version = "0.1.0"
+description = "Web UI for turning the cabin heat pump knob over MQTT"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiomqtt>=2.4.0",
+    "fastapi>=0.135.2",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.42.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.7",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D100",   # missing docstring in public module
+    "D104",   # missing docstring in public package
+    "D101",   # missing docstring in public class
+    "D102",   # missing docstring in public method
+    "D103",   # missing docstring in public function
+    "D105",   # missing docstring in magic method
+    "D203",   # conflicts with D211
+    "D213",   # conflicts with D212
+    "ANN201", # missing return type annotation
+    "T201",   # print statements
+    "COM812", # conflicts with ruff formatter
+    "CPY001", # copyright notice in every file
+]

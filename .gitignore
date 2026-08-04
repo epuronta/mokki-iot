@@ -2,3 +2,9 @@
 .pio
 obj
 secrets.h
+.venv/
+__pycache__/
+.ruff_cache/
+# Unanchored, so this keeps matching now that the app sits under web/. A pattern
+# with a slash in it would only ever match at the repo root.
+.env
